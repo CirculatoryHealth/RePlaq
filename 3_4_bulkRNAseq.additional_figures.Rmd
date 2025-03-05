@@ -1,0 +1,1840 @@
+---
+title: "Additional Figures"
+subtitle: Accompanying 'MetaPlaq'
+author: '[Sander W. van der Laan, PhD](https://vanderlaanand.science) | s.w.vanderlaan[at]gmail[dot]com'
+date: '`r Sys.Date()`'
+output:
+  html_notebook: 
+    cache: yes
+    code_folding: hide
+    collapse: yes
+    df_print: paged
+    fig.align: center
+    fig_caption: yes
+    fig_height: 10
+    fig_retina: 2
+    fig_width: 12
+    theme: paper
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    highlight: tango
+mainfont: Helvetica
+editor_options:
+  chunk_output_type: inline
+bibliography: references.bib
+knit: worcs::cite_all
+---
+
+# General Setup
+
+```{r echo = FALSE}
+rm(list = ls())
+```
+
+```{r LocalSystem, echo = FALSE}
+source("scripts/local.system.R")
+```
+
+```{r Source functions}
+source("scripts/functions.R")
+```
+
+```{r loading_packages, message=FALSE, warning=FALSE}
+source("scripts/pack02.packages.R")
+```
+
+```{r Setting: Colors}
+Today = format(as.Date(as.POSIXlt(Sys.time())), "%Y%m%d")
+Today.Report = format(as.Date(as.POSIXlt(Sys.time())), "%A, %B %d, %Y")
+source("scripts/colors.R")
+```
+
+```{r setup_notebook, include=FALSE}
+# We recommend that you prepare your raw data for analysis in 'prepare_data.R',
+# and end that file with either open_data(yourdata), or closed_data(yourdata).
+# Then, uncomment the line below to load the original or synthetic data
+# (whichever is available), to allow anyone to reproduce your code:
+# load_data()
+
+# further define some knitr-options.
+knitr::opts_chunk$set(fig.width = 12, fig.height = 8, fig.path = 'Figures/', 
+                      warning = TRUE, # show warnings during codebook generation
+                      message = TRUE, # show messages during codebook generation
+                      error = TRUE, # do not interrupt codebook generation in case of errors, 
+                                    # usually better for debugging
+                      echo = TRUE,  # show R code
+                      eval = TRUE)
+
+ggplot2::theme_set(ggplot2::theme_minimal())
+# pander::panderOptions("table.split.table", Inf)
+library("worcs")
+library("rmarkdown")
+```
+
+
+# Background
+
+This notebook contains additional figures of the project.
+
+
+# Loading data
+
+```{r Loading project data}
+# load(paste0(PROJECT_loc, "/",Today,".",PROJECTNAME,".bulkRNAseq.main_analysis.RData"))
+# load(paste0(PROJECT_loc, "/20240109.",PROJECTNAME,".bulkRNAseq.main_analysis.RData"))
+```
+
+## Genes of interest
+
+```{r}
+gene_list_df
+```
+
+```{r}
+gene_list_qc
+```
+
+# Fix some variables
+
+We need to get the 'conventional unit' versions of cholesterols.
+
+```{r}
+AERNASE.clin <- merge(AERNASE.clin.targets, 
+                            subset(AEDB.CEA, select = c("STUDY_NUMBER", 
+                                                        "risk614", 
+                                                        "LDL_finalCU", "HDL_finalCU", "TC_finalCU", "TG_finalCU")), 
+                            by.x = "study_number", by.y = "STUDY_NUMBER", sort = TRUE, all.x = TRUE)
+```
+
+
+# Additional figures
+
+## Risk factors
+
+Additional figures visualizing the relationship between the target plasma or plaque levels and risk factors.
+
+### Age and sex
+
+We want to create per-age-group figures median ± interquartile range. 
+
+- Box and Whisker plot for target plasma or plaque levels by sex.
+- Box and Whisker plot for target plasma or plaque levels by (sex and) age group (<55, 55-64, 65-74, 75-84, 85+).
+
+
+```{r per Sex}
+
+cat(paste0("Processing gene: \n"))
+for (TARGET_GENE in gene_list_qc) {
+
+  cat(paste0("- ", TARGET_GENE, "\n"))
+  
+  compare_means(as.formula(paste0(TARGET_GENE, " ~ Gender")),  data = AERNASE.clin, method = "kruskal.test")
+  ggpubr::ggboxplot(AERNASE.clin, 
+                    x = c("Gender"),
+                    y = TARGET_GENE, 
+                    xlab = "gender",
+                    ylab = paste0(TARGET_GENE, " (normalized expression)"),
+                    color = "Gender",
+                    palette = c("#D5267B", "#1290D9"),
+                    add = "jitter") +
+    stat_compare_means(aes(group = Gender), label = "p.format", method = "kruskal.test")
+  ggsave(file = paste0(PLOT_loc, "/", Today, ".AERNASE.clin.", TARGET_GENE, ".Gender.pdf"), 
+         plot = last_plot())
+}
+
+```
+
+```{r AgeGroups}
+library(dplyr)
+
+AERNASE.clin <- AERNASE.clin %>% dplyr::mutate(AgeGroup = factor(case_when(Age < 55 ~ "<55",
+                                                     Age >= 55  & Age <= 64 ~ "55-64",
+                                                     Age >= 65  & Age <= 74 ~ "65-74",
+                                                     Age >= 75  & Age <= 84 ~ "75-84",
+                                                     Age >= 85 ~ "85+"))) 
+
+AERNASE.clin <- AERNASE.clin %>% dplyr::mutate(AgeGroupSex = factor(case_when(Age < 55 & Gender == "male" ~ "<55 males" ,
+                                                        Age >= 55  & Age <= 64 & Gender == "male"~ "55-64 males",
+                                                        Age >= 65  & Age <= 74 & Gender == "male"~ "65-74 males",
+                                                        Age >= 75  & Age <= 84 & Gender == "male"~ "75-84 males",
+                                                        Age >= 85 & Gender == "male"~ "85+ males",
+                                                        Age < 55 & Gender == "female" ~ "<55 females" ,
+                                                        Age >= 55  & Age <= 64 & Gender == "female"~ "55-64 females ",
+                                                        Age >= 65  & Age <= 74 & Gender == "female"~ "65-74 females",
+                                                        Age >= 75  & Age <= 84 & Gender == "female"~ "75-84 females",
+                                                        Age >= 85 & Gender == "female"~ "85+ females")))
+
+table(AERNASE.clin$AgeGroup, AERNASE.clin$Gender)
+table(AERNASE.clin$AgeGroupSex)
+
+```
+
+Now we can draw some graphs of target plasma or plaque levels per sex and age group as median ± interquartile range.
+
+```{r per AgeGroup per Sex}
+cat(paste0("Processing gene: \n"))
+for (TARGET_GENE in gene_list_qc) {
+
+  cat(paste0("- ", TARGET_GENE, "\n"))
+
+compare_means(as.formula(paste0(TARGET_GENE, " ~ AgeGroup")),  data = AERNASE.clin, method = "kruskal.test")
+ggpubr::ggboxplot(AERNASE.clin, 
+                  x = c("AgeGroup"),
+                  y = TARGET_GENE, 
+                  xlab = "Age groups (years)",
+                  ylab = paste0(TARGET_GENE, " (normalized expression)"),
+                  color = "AgeGroup",
+                  palette = "npg",
+                  # add = "median_iqr")
+                  add = c("median_iqr", "jitter")) +
+  stat_compare_means(aes(group = AgeGroup), label = "p.format", method = "kruskal.test")
+ggsave(file = paste0(PLOT_loc, "/",Today,".AERNASE.clin.",TARGET_GENE,".plaque.AgeGroup.pdf"), plot = last_plot())
+
+compare_means(as.formula(paste0(TARGET_GENE, " ~ AgeGroup")), group.by = "Gender", data = AERNASE.clin, method = "kruskal.test")
+ggpubr::ggboxplot(AERNASE.clin, 
+                  x = c("AgeGroup"),
+                  y = paste0(TARGET_GENE), 
+                  xlab = "Age groups (years) per gender",
+                  ylab = paste0(TARGET_GENE, " (normalized expression)"),
+                  color = "Gender",
+                  palette = c("#D5267B", "#1290D9"),
+                  # add = "median_iqr")
+                  add = c("median_iqr", "jitter")) +
+  stat_compare_means(aes(group = Gender), label = "p.format", method = "kruskal.test")
+ggsave(file = paste0(PLOT_loc, "/",Today,".AERNASE.clin.",TARGET_GENE,".plaque.AgeGroup_perGender.pdf"), plot = last_plot())
+}
+```
+
+
+### Hypertension & blood pressure
+
+We want to create figures of target levels stratified by hypertension/blood pressure, and use of anti-hypertensive drugs. 
+
+- Box and Whisker plot for target plasma or plaque levels by hypertension group (no, yes)
+- Box and Whisker plot for target plasma or plaque levels by systolic blood pressure group (<120, 120-139, 140-159,160+)
+
+
+```{r BloodPressure}
+library(dplyr)
+AERNASE.clin <- AERNASE.clin %>% mutate(SBPGroup = factor(case_when(systolic < 120 ~ "<120",
+                                                     systolic >= 120  & systolic <= 139 ~ "120-139",
+                                                     systolic >= 140  & systolic <= 159 ~ "140-159",
+                                                     systolic >= 160 ~ "160+"))) 
+
+table(AERNASE.clin$SBPGroup, AERNASE.clin$Gender)
+```
+
+Now we can draw some graphs of target levels per sex and hypertension/blood pressure group as median ± interquartile range.
+
+```{r}
+detach("package:EnsDb.Hsapiens.v86", unload = TRUE)
+detach("package:ensembldb", unload = TRUE)
+```
+
+```{r }
+cat(paste0("Processing gene: \n"))
+for (TARGET_GENE in gene_list_qc) {
+
+  cat(paste0("- ", TARGET_GENE, "\n"))
+
+  compare_means(as.formula(paste0(TARGET_GENE, " ~ SBPGroup")), data = AERNASE.clin %>% filter(!is.na(SBPGroup)), method = "kruskal.test")
+  ggpubr::ggboxplot(AERNASE.clin %>% filter(!is.na(SBPGroup)), 
+                    x = c("SBPGroup"),
+                    y = TARGET_GENE, 
+                    xlab = "Systolic blood pressure (mmHg)",
+                    ylab = paste0(TARGET_GENE, " (normalized expression)"),
+                    color = "SBPGroup",
+                    palette = "npg",
+                    add = "jitter") +
+    stat_compare_means(aes(group = SBPGroup), label = "p.format", method = "kruskal.test")
+  ggsave(file = paste0(PLOT_loc, "/",Today,".AERNASE.clin.",TARGET_GENE,".plaque.SBPGroup.pdf"), plot = last_plot())
+  
+  compare_means(as.formula(paste0(TARGET_GENE, " ~ Hypertension.selfreport")), data = AERNASE.clin %>% filter(!is.na(Hypertension.selfreport)), method = "kruskal.test")
+  ggpubr::ggboxplot(AERNASE.clin %>% filter(!is.na(Hypertension.selfreport)), 
+                    x = c("Hypertension.selfreport"),
+                    y = TARGET_GENE, 
+                    xlab = "Self-reported hypertension",
+                    ylab = paste0(TARGET_GENE, " (normalized expression)"),
+                    color = "Hypertension.selfreport",
+                    palette = "npg",
+                    add = "jitter") +
+    stat_compare_means(aes(group = Hypertension.selfreport), label = "p.format", method = "kruskal.test")
+  ggsave(file = paste0(PLOT_loc, "/",Today,".AERNASE.clin.",TARGET_GENE,".plaque.Hypertension.pdf"), plot = last_plot())
+  
+  compare_means(as.formula(paste0(TARGET_GENE, " ~ Hypertension.drugs")), data = AERNASE.clin %>% filter(!is.na(Hypertension.drugs)), method = "kruskal.test")
+  ggpubr::ggboxplot(AERNASE.clin %>% filter(!is.na(Hypertension.drugs)), 
+                    x = c("Hypertension.drugs"),
+                    y = TARGET_GENE, 
+                    xlab = "Hypertension medication use",
+                    ylab = paste0(TARGET_GENE, " (normalized expression)"),
+                    color = "Hypertension.drugs",
+                    palette = "npg",
+                    add = "jitter") +
+    stat_compare_means(aes(group = Hypertension.drugs), label = "p.format", method = "kruskal.test")
+  ggsave(file = paste0(PLOT_loc, "/",Today,".AERNASE.clin.",TARGET_GENE,".plaque.HypertensionDrugs.pdf"), plot = last_plot())
+  
+  # By gender
+  compare_means(as.formula(paste0(TARGET_GENE, " ~ SBPGroup")), group.by = "Gender", data = AERNASE.clin %>% filter(!is.na(SBPGroup)), method = "kruskal.test")
+  ggpubr::ggboxplot(AERNASE.clin %>% filter(!is.na(SBPGroup)), 
+                    x = c("SBPGroup"),
+                    y = TARGET_GENE, 
+                    xlab = "Systolic blood pressure (mmHg) per gender",
+                    ylab = paste0(TARGET_GENE, " (normalized expression)"),
+                    color = "Gender",
+                    palette = c("#D5267B", "#1290D9"),
+                    add = "jitter") +
+    stat_compare_means(aes(group = Gender), label = "p.format", method = "kruskal.test")
+  ggsave(file = paste0(PLOT_loc, "/",Today,".AERNASE.clin.",TARGET_GENE,".plaque.SBPGroup_byGender.pdf"), plot = last_plot())
+  
+  compare_means(as.formula(paste0(TARGET_GENE, " ~ Hypertension.selfreport")), group.by = "Gender", data = AERNASE.clin %>% filter(!is.na(Hypertension.selfreport)), method = "kruskal.test")
+  ggpubr::ggboxplot(AERNASE.clin %>% filter(!is.na(Hypertension.selfreport)), 
+                    x = c("Hypertension.selfreport"),
+                    y = TARGET_GENE, 
+                    xlab = "Self-reported hypertension per gender",
+                    ylab = paste0(TARGET_GENE, " (normalized expression)"),
+                    color = "Gender",
+                    palette = c("#D5267B", "#1290D9"),
+                    add = "jitter") +
+    stat_compare_means(aes(group = Gender), label = "p.format", method = "kruskal.test")
+  ggsave(file = paste0(PLOT_loc, "/",Today,".AERNASE.clin.",TARGET_GENE,".plaque.Hypertension_byGender.pdf"), plot = last_plot())
+  
+  compare_means(as.formula(paste0(TARGET_GENE, " ~ Hypertension.drugs")), group.by = "Gender", data = AERNASE.clin %>% filter(!is.na(Hypertension.drugs)), method = "kruskal.test")
+  ggpubr::ggboxplot(AERNASE.clin %>% filter(!is.na(Hypertension.drugs)), 
+                    x = c("Hypertension.drugs"),
+                    y = TARGET_GENE, 
+                    xlab = "Hypertension medication use per gender",
+                    ylab = paste0(TARGET_GENE, " (normalized expression)"),
+                    color = "Gender",
+                    palette = c("#D5267B", "#1290D9"),
+                    add = "jitter") +
+    stat_compare_means(aes(group = Gender), label = "p.format", method = "kruskal.test")
+  ggsave(file = paste0(PLOT_loc, "/",Today,".AERNASE.clin.",TARGET_GENE,".plaque.Hypertension.drugs_byGender.pdf"), plot = last_plot())
+  
+  # By drug
+  compare_means(as.formula(paste0(TARGET_GENE, " ~ SBPGroup")), group.by = "Hypertension.drugs", data = AERNASE.clin %>% filter(!is.na(SBPGroup) & !is.na(Hypertension.drugs)), method = "kruskal.test")
+  ggpubr::ggboxplot(AERNASE.clin %>% filter(!is.na(SBPGroup) & !is.na(Hypertension.drugs)), 
+                    x = c("SBPGroup"),
+                    y = TARGET_GENE, 
+                    xlab = "Systolic blood pressure (mmHg) by medication use",
+                    ylab = paste0(TARGET_GENE, " (normalized expression)"),
+                    color = "Hypertension.drugs",
+                    palette = c("#49A01D", "#1290D9"),
+                    add = "jitter") +
+    stat_compare_means(aes(group = Hypertension.drugs), label = "p.format", method = "kruskal.test")
+  ggsave(file = paste0(PLOT_loc, "/",Today,".AERNASE.clin.",TARGET_GENE,".plaque.SBPGroup_byHypertensionDrugs.pdf"), plot = last_plot())
+  
+  compare_means(as.formula(paste0(TARGET_GENE, " ~ Hypertension.selfreport")), group.by = "Hypertension.drugs", data = AERNASE.clin %>% filter(!is.na(Hypertension.selfreport) & !is.na(Hypertension.drugs)), method = "kruskal.test")
+  ggpubr::ggboxplot(AERNASE.clin %>% filter(!is.na(Hypertension.selfreport) & !is.na(Hypertension.drugs)), 
+                    x = c("Hypertension.selfreport"),
+                    y = TARGET_GENE, 
+                    xlab = "Self-reported hypertension per medication use",
+                    ylab = paste0(TARGET_GENE, " (normalized expression)"),
+                    color = "Hypertension.drugs",
+                    palette = c("#49A01D", "#1290D9"),
+                    add = "jitter") +
+    stat_compare_means(aes(group = Hypertension.drugs), label = "p.format", method = "kruskal.test")
+  ggsave(file = paste0(PLOT_loc, "/",Today,".AERNASE.clin.",TARGET_GENE,".plaque.Hypertension.selfreport_byHypertensionDrugs.pdf"), plot = last_plot())
+}
+```
+
+
+### Hypercholesterolemia & LDL levels
+
+We want to create figures of target levels stratified by hypercholesterolemia/LDL-levels, and use of lipid-lowering drugs. 
+
+- Box and Whisker plot for target plasma or plaque levels by hypercholesterolemia (`risk614`) group (no, yes)
+- Box and Whisker plot for target plasma or plaque levels by lipid-lowering drugs group (no, yes)
+- Box and Whisker plot for target plasma or plaque levels by LDL-levels (mmol/L) group (<100, 100-129, 130-159, 160-189, 190+)
+
+```{r LDLGroups}
+library(dplyr)
+
+AERNASE.clin <- AERNASE.clin %>% mutate(LDLGroup = factor(case_when(LDL_finalCU < 100 ~ "<100",
+                                                     LDL_finalCU >= 100  & LDL_finalCU <= 129 ~ "100-129",
+                                                     LDL_finalCU >= 130  & LDL_finalCU <= 159 ~ "130-159",
+                                                     LDL_finalCU >= 160  & LDL_finalCU <= 189 ~ "160-189",
+                                                     LDL_finalCU >= 190 ~ "190+"))) 
+
+
+table(AERNASE.clin$LDLGroup, AERNASE.clin$Gender)
+
+```
+
+
+```{r Fix Hypercholesterolemia, message=FALSE, warning=FALSE}
+require(sjlabelled)
+
+AERNASE.clin$risk614 <- to_factor(AERNASE.clin$risk614)
+
+# Fix plaquephenotypes
+attach(AERNASE.clin)
+AERNASE.clin[,"Hypercholesterolemia"] <- NA
+AERNASE.clin$Hypercholesterolemia[risk614 == "missing value"] <- NA
+AERNASE.clin$Hypercholesterolemia[risk614 == -999] <- NA
+AERNASE.clin$Hypercholesterolemia[risk614 == 0] <- "no"
+AERNASE.clin$Hypercholesterolemia[risk614 == 1] <- "yes"
+detach(AERNASE.clin)
+
+table(AERNASE.clin$risk614, AERNASE.clin$Hypercholesterolemia)
+
+# AEDB.temp <- subset(AEDB,  select = c("STUDY_NUMBER", "UPID", "Age", "Gender", "Hospital", "Artery_summary", "risk614", "Hypercholesterolemia"))
+# require(labelled)
+# AEDB.temp$Gender <- to_factor(AEDB.temp$Gender)
+# AEDB.temp$Hospital <- to_factor(AEDB.temp$Hospital)
+# AEDB.temp$Artery_summary <- to_factor(AEDB.temp$Artery_summary)
+# 
+# DT::datatable(AEDB.temp[1:10,], caption = "Excerpt of the whole AEDB.", rownames = FALSE)
+# 
+# rm(AEDB.temp)
+
+```
+
+Now we can draw some graphs of target levels per sex and hypercholesterolemia/LDL-levels group, as well as stratified by lipid-lowering drugs users as median ± interquartile range.
+
+```{r }
+cat(paste0("Processing gene: \n"))
+for (TARGET_GENE in gene_list_qc) {
+
+  cat(paste0("- ", TARGET_GENE, "\n"))
+
+  # By LDL
+  compare_means(as.formula(paste0(TARGET_GENE, " ~ LDLGroup")), data = AERNASE.clin %>% filter(!is.na(LDLGroup)), method = "kruskal.test")
+  ggpubr::ggboxplot(AERNASE.clin %>% filter(!is.na(LDLGroup)), 
+                    x = c("LDLGroup"),
+                    y = TARGET_GENE,  
+                    xlab = "LDL (mg/dL) per gender",
+                    ylab = paste0(TARGET_GENE, " (normalized expression)"),
+                    color = "LDLGroup",
+                    palette = "npg",
+                    add = "jitter") +
+    stat_compare_means(label = "p.format", method = "kruskal.test")
+  ggsave(file = paste0(PLOT_loc, "/",Today,".AERNASE.clin.",TARGET_GENE,".plaque.LDLGroups.pdf"), plot = last_plot())
+  
+  # By gender
+  compare_means(as.formula(paste0(TARGET_GENE, " ~ LDLGroup")), group.by = "Gender", data = AERNASE.clin %>% filter(!is.na(LDLGroup)), method = "kruskal.test")
+  ggpubr::ggboxplot(AERNASE.clin %>% filter(!is.na(LDLGroup)), 
+                    x = c("LDLGroup"),
+                    y = TARGET_GENE,  
+                    xlab = "LDL (mg/dL) per gender",
+                    ylab = paste0(TARGET_GENE, " (normalized expression)"),
+                    color = "Gender",
+                    palette = c("#D5267B", "#1290D9"),
+                    add = "jitter") +
+    stat_compare_means(aes(group = Gender), label = "p.format", method = "kruskal.test")
+  ggsave(file = paste0(PLOT_loc, "/",Today,".AERNASE.clin.",TARGET_GENE,".plaque.LDLGroups_byGender.pdf"), plot = last_plot())
+  
+  
+  # By hypercholesterolemia
+  compare_means(as.formula(paste0(TARGET_GENE, " ~ Hypercholesterolemia")), data = AERNASE.clin %>% filter(!is.na(Hypercholesterolemia)), method = "kruskal.test")
+  ggpubr::ggboxplot(AERNASE.clin %>% filter(!is.na(Hypercholesterolemia)), 
+                    x = c("Hypercholesterolemia"),
+                    y = TARGET_GENE,  
+                    xlab = "Diagnosed hypercholesterolemia",
+                    ylab = paste0(TARGET_GENE, " (normalized expression)"),
+                    color = "Hypercholesterolemia",
+                    palette = "npg",
+                    add = "jitter") +
+    stat_compare_means(label = "p.format", method = "kruskal.test")
+  ggsave(file = paste0(PLOT_loc, "/",Today,".AERNASE.clin.",TARGET_GENE,".plaque.Hypercholesterolemia.pdf"), plot = last_plot())
+  
+  # By gender
+  compare_means(as.formula(paste0(TARGET_GENE, " ~ Hypercholesterolemia")), group.by = "Gender", data = AERNASE.clin %>% filter(!is.na(Hypercholesterolemia)), method = "kruskal.test")
+  ggpubr::ggboxplot(AERNASE.clin %>% filter(!is.na(Hypercholesterolemia)), 
+                    x = c("Hypercholesterolemia"),
+                    y = TARGET_GENE,  
+                    xlab = "Diagnosed hypercholesterolemia per gender",
+                    ylab = paste0(TARGET_GENE, " (normalized expression)"),
+                    color = "Gender",
+                    palette = c("#D5267B", "#1290D9"),
+                    add = "jitter") +
+    stat_compare_means(aes(group = Gender), label = "p.format", method = "kruskal.test")
+  ggsave(file = paste0(PLOT_loc, "/",Today,".AERNASE.clin.",TARGET_GENE,".plaque.Hypercholesterolemia_byGender.pdf"), plot = last_plot())
+  
+  # By drug
+  compare_means(as.formula(paste0(TARGET_GENE, " ~ Med.Statin.LLD")), data = AERNASE.clin %>% filter(!is.na(Med.Statin.LLD)), method = "kruskal.test")
+  ggpubr::ggboxplot(AERNASE.clin %>% filter(!is.na(Med.Statin.LLD)), 
+                    x = c("Med.Statin.LLD"),
+                    y = TARGET_GENE,  
+                    xlab = "Lipid-lowering drug use",
+                    ylab = paste0(TARGET_GENE, " (normalized expression)"),
+                    color = "Med.Statin.LLD",
+                    palette = "npg",
+                    add = "jitter") +
+    stat_compare_means(label = "p.format", method = "kruskal.test")
+  ggsave(file = paste0(PLOT_loc, "/",Today,".AERNASE.clin.",TARGET_GENE,".plaque.Med.Statin.LLD.pdf"), plot = last_plot())
+  
+  # By gender
+  compare_means(as.formula(paste0(TARGET_GENE, " ~ Med.Statin.LLD")), group.by = "Gender", data = AERNASE.clin %>% filter(!is.na(Med.Statin.LLD)), method = "kruskal.test")
+  ggpubr::ggboxplot(AERNASE.clin %>% filter(!is.na(Med.Statin.LLD)), 
+                    x = c("Med.Statin.LLD"),
+                    y = TARGET_GENE,  
+                    xlab = "Lipid-lowering drug use per gender",
+                    ylab = paste0(TARGET_GENE, " (normalized expression)"),
+                    color = "Gender",
+                    palette = c("#D5267B", "#1290D9"),
+                    add = "jitter") +
+    stat_compare_means(aes(group = Gender), label = "p.format", method = "kruskal.test")
+  ggsave(file = paste0(PLOT_loc, "/",Today,".AERNASE.clin.",TARGET_GENE,".plaque.Med.Statin.LLD_byGender.pdf"), plot = last_plot())
+  
+  
+  # By drug use
+  compare_means(as.formula(paste0(TARGET_GENE, " ~ LDLGroup")), group.by = "Med.Statin.LLD", data = AERNASE.clin %>% filter(!is.na(LDLGroup) & !is.na(Med.Statin.LLD)), method = "kruskal.test")
+  ggpubr::ggboxplot(AERNASE.clin %>% filter(!is.na(LDLGroup) & !is.na(Med.Statin.LLD)), 
+                    x = c("LDLGroup"),
+                    y = TARGET_GENE,  
+                    xlab = "LDL (mg/dL) per LLD use",
+                    ylab = paste0(TARGET_GENE, " (normalized expression)"),
+                    color = "Med.Statin.LLD",
+                    palette = c("#49A01D", "#1290D9"),
+                    add = "jitter") +
+    stat_compare_means(aes(group = Med.Statin.LLD), label = "p.format", method = "kruskal.test")
+  ggsave(file = paste0(PLOT_loc, "/",Today,".AERNASE.clin.",TARGET_GENE,".plaque.LDLGroups_byMed.Statin.LLD.pdf"), plot = last_plot())
+  
+  
+  compare_means(as.formula(paste0(TARGET_GENE, " ~ Hypercholesterolemia")), group.by = "Med.Statin.LLD", data = AERNASE.clin %>% filter(!is.na(Hypercholesterolemia) & !is.na(Med.Statin.LLD)), method = "kruskal.test")
+  ggpubr::ggboxplot(AERNASE.clin %>% filter(!is.na(Hypercholesterolemia) & !is.na(Med.Statin.LLD)), 
+                    x = c("Hypercholesterolemia"),
+                    y = TARGET_GENE,  
+                    xlab = "Diagnosed hypercholesterolemia per LLD use",
+                    ylab = paste0(TARGET_GENE, " (normalized expression)"),
+                    color = "Med.Statin.LLD",
+                    palette = c("#49A01D", "#1290D9"),
+                    add = "jitter") +
+    stat_compare_means(aes(group = Med.Statin.LLD), label = "p.format", method = "kruskal.test")
+  ggsave(file = paste0(PLOT_loc, "/",Today,".AERNASE.clin.",TARGET_GENE,".plaque.LDLGroups_byMed.Statin.LLD.pdf"), plot = last_plot())
+}
+
+```
+
+
+### Kidney function (eGFR)
+
+We want to create figures of target levels stratified by kidney function. 
+
+- Box and Whisker plot for target plasma or plaque levels by chronic kidney disease (CKD) group (1, 2, 3, 4, 5)
+- Box and Whisker plot for target plasma or plaque levels by eGFR (MDRD-based) group (90+, 60-89, 30-59, <30)
+
+```{r EGFR}
+library(dplyr)
+
+AERNASE.clin <- AERNASE.clin %>% mutate(eGFRGroup = factor(case_when(GFR_MDRD < 15 ~ "<15",
+                                                             GFR_MDRD >= 15  & GFR_MDRD <= 29 ~ "15-29",
+                                                             GFR_MDRD >= 30  & GFR_MDRD <= 59 ~ "30-59",
+                                                             GFR_MDRD >= 60  & GFR_MDRD <= 89 ~ "60-89",
+                                                             GFR_MDRD >= 90 ~ "90+")))
+
+table(AERNASE.clin$eGFRGroup, AERNASE.clin$Gender)
+
+table(AERNASE.clin$eGFRGroup, AERNASE.clin$KDOQI)
+
+```
+
+Now we can draw some graphs of target plasma or plaque levels per sex and kidney function group as median ± interquartile range.
+
+```{r}
+
+cat(paste0("Processing gene: \n"))
+for (TARGET_GENE in gene_list_qc) {
+
+  cat(paste0("- ", TARGET_GENE, "\n"))
+
+  compare_means(as.formula(paste0(TARGET_GENE, " ~ eGFRGroup")), data = AERNASE.clin %>% filter(!is.na(eGFRGroup)), method = "kruskal.test")
+  ggpubr::ggboxplot(AERNASE.clin %>% filter(!is.na(eGFRGroup)), 
+                    x = c("eGFRGroup"),
+                    y = TARGET_GENE,  
+                    xlab = "eGFR (mL/min per 1.73 m2)",
+                    ylab = paste0(TARGET_GENE, " (normalized expression)"),
+                    color = "eGFRGroup",
+                    palette = "npg",
+                    add = "jitter") +
+    stat_compare_means(method = "kruskal.test")
+  ggsave(file = paste0(PLOT_loc, "/",Today,".AERNASE.clin.",TARGET_GENE,".plaque.EGFR.pdf"), plot = last_plot())
+  
+  compare_means(as.formula(paste0(TARGET_GENE, " ~ eGFRGroup")), group.by = "Gender",  data = AERNASE.clin %>% filter(!is.na(eGFRGroup)), method = "kruskal.test")
+  ggpubr::ggboxplot(AERNASE.clin %>% filter(!is.na(eGFRGroup)), 
+                    x = c("eGFRGroup"),
+                    y = TARGET_GENE,  
+                    xlab = "eGFR (mL/min per 1.73 m2) per gender",
+                    ylab = paste0(TARGET_GENE, " (normalized expression)"),
+                    color = "Gender",
+                    palette = c("#D5267B", "#1290D9"),
+                    add = "jitter") +
+    stat_compare_means(aes(group = Gender), label = "p.format", method = "kruskal.test")
+  ggsave(file = paste0(PLOT_loc, "/",Today,".AERNASE.clin.",TARGET_GENE,".plaque.EGFR_byGender.pdf"), plot = last_plot())
+  
+  # By KDOQI
+  compare_means(as.formula(paste0(TARGET_GENE, " ~ KDOQI")), data = AERNASE.clin %>% filter(!is.na(KDOQI)), method = "kruskal.test")
+  p1 <- ggpubr::ggboxplot(AERNASE.clin %>% filter(!is.na(KDOQI)), 
+                    x = c("KDOQI"),
+                    y = TARGET_GENE,  
+                    xlab = "Kidney function (KDOQI)",
+                    ylab = paste0(TARGET_GENE, " (normalized expression)"),
+                    color = "KDOQI",
+                    palette = "npg",
+                    add = "jitter") +
+    stat_compare_means(aes(group = KDOQI), label = "p.format", method = "kruskal.test")
+  ggpar(p1 + rotate_x_text(45), legend = "right") 
+  rm(p1)
+  ggsave(file = paste0(PLOT_loc, "/",Today,".AERNASE.clin.",TARGET_GENE,".plaque.KDOQI.pdf"), plot = last_plot())
+  
+  compare_means(as.formula(paste0(TARGET_GENE, " ~ KDOQI")), group.by = "Gender",   data = AERNASE.clin %>% filter(!is.na(KDOQI)), method = "kruskal.test")
+  p1 <- ggpubr::ggboxplot(AERNASE.clin %>% filter(!is.na(KDOQI)), 
+                    x = c("KDOQI"),
+                    y = TARGET_GENE,  
+                    xlab = "Kidney function (KDOQI) per gender",
+                    ylab = paste0(TARGET_GENE, " (normalized expression)"),
+                    color = "Gender",
+                    palette = c("#D5267B", "#1290D9"),
+                    add = "jitter") +
+    stat_compare_means(aes(group = Gender), label = "p.format", method = "kruskal.test")
+  ggpar(p1 + rotate_x_text(45), legend = "right") 
+  rm(p1)
+  ggsave(file = paste0(PLOT_loc, "/",Today,".AERNASE.clin.",TARGET_GENE,".plaque.KDOQI_byGender.pdf"), plot = last_plot())
+  
+  # eGFR by KDOQI
+  compare_means(as.formula(paste0(TARGET_GENE, " ~ eGFRGroup")),  data = AERNASE.clin %>% filter(!is.na(eGFRGroup) & !is.na(KDOQI)), method = "kruskal.test")
+  p1 <- ggpubr::ggboxplot(AERNASE.clin %>% filter(!is.na(eGFRGroup) & !is.na(KDOQI)), 
+                    x = c("eGFRGroup"),
+                    y = TARGET_GENE,  
+                    xlab = "eGFR (mL/min per 1.73 m2) by KDOQI group",
+                    ylab = paste0(TARGET_GENE, " (normalized expression)"),
+                    color = "KDOQI",
+                    palette = "npg",
+                    add = "jitter") +
+    stat_compare_means(method = "kruskal.test")
+  ggpar(p1, legend = "right")
+  rm(p1)
+  ggsave(file = paste0(PLOT_loc, "/",Today,".AERNASE.clin.",TARGET_GENE,".plaque.EGFR_KDOQI.pdf"), plot = last_plot())
+}
+```
+
+
+### BMI
+
+We want to create figures of target levels stratified by BMI. 
+
+- Box and Whisker plot for target plasma or plaque levels by BMI WHO group (underweight, normal, overweight, obese)
+- Box and Whisker plot for target plasma or plaque levels by BMI group (<18.5, 18.5-24.9, 25, 29.9, 30-24.9, 35+)
+
+```{r BMI}
+library(dplyr)
+
+AERNASE.clin <- AERNASE.clin %>% mutate(BMIGroup = factor(case_when(BMI < 18.5 ~ "<18.5",
+                                                     BMI >= 18.5  & BMI < 25 ~ "18.5-24",
+                                                     BMI >= 25  & BMI < 30 ~ "25-29",
+                                                     BMI >= 30  & BMI < 35 ~ "30-35",
+                                                     BMI >= 35 ~ "35+"))) 
+
+# require(labelled)
+# AERNASE.clin$BMI_US <- as_factor(AERNASE.clin$BMI_US)
+# AERNASE.clin$BMI_WHO <- as_factor(AERNASE.clin$BMI_WHO)
+# table(AERNASE.clin$BMI_WHO, AERNASE.clin$BMI_US)
+
+table(AERNASE.clin$BMIGroup, AERNASE.clin$Gender)
+table(AERNASE.clin$BMIGroup, AERNASE.clin$BMI_WHO)
+
+```
+
+Now we can draw some graphs of target plasma or plaque levels per sex and age group as median ± interquartile range.
+
+```{r}
+
+cat(paste0("Processing gene: \n"))
+for (TARGET_GENE in gene_list_qc) {
+
+  cat(paste0("- ", TARGET_GENE, "\n"))
+  compare_means(as.formula(paste0(TARGET_GENE, " ~ BMIGroup")),  data = AERNASE.clin %>% filter(!is.na(BMIGroup)), method = "kruskal.test")
+  ggpubr::ggboxplot(AERNASE.clin %>% filter(!is.na(BMIGroup)), 
+                    x = c("BMIGroup"),
+                    y = TARGET_GENE,  
+                    xlab = "BMI groups (kg/m2)",
+                    ylab = paste0(TARGET_GENE, " (normalized expression)"),
+                    # color = "Gender",
+                    # palette = c("#D5267B", "#1290D9"),
+                    color = "BMIGroup",
+                    palette = "npg",
+                    add = "jitter") +
+    stat_compare_means(label = "p.format", method = "kruskal.test")
+  ggsave(file = paste0(PLOT_loc, "/",Today,".AERNASE.clin.",TARGET_GENE,".plaque.BMI.pdf"), plot = last_plot())
+  
+  # By gender
+  compare_means(as.formula(paste0(TARGET_GENE, " ~ BMIGroup")), group.by = "Gender", data = AERNASE.clin %>% filter(!is.na(BMIGroup)), method = "kruskal.test")
+  ggpubr::ggboxplot(AERNASE.clin %>% filter(!is.na(BMIGroup)), 
+                    x = c("BMIGroup"),
+                    y = TARGET_GENE,  
+                    xlab = "BMI groups (kg/m2) per gender",
+                    ylab = paste0(TARGET_GENE, " (normalized expression)"),
+                    color = "Gender",
+                    palette = c("#D5267B", "#1290D9"),
+                    add = "jitter") +
+    stat_compare_means(aes(group = Gender), label = "p.format", method = "kruskal.test")
+  ggsave(file = paste0(PLOT_loc, "/",Today,".AERNASE.clin.",TARGET_GENE,".plaque.BMI_byGender.pdf"), plot = last_plot())
+  
+  # By WHO group
+  compare_means(as.formula(paste0(TARGET_GENE, " ~ BMIGroup")),  data = AERNASE.clin %>% filter(!is.na(BMIGroup) & !is.na(BMI_WHO)), method = "kruskal.test")
+  p1 <- ggpubr::ggboxplot(AERNASE.clin %>% filter(!is.na(BMIGroup) & !is.na(BMI_WHO)), 
+                    x = c("BMIGroup"),
+                    y = TARGET_GENE,  
+                    xlab = "BMI groups (kg/m2) per WHO categories",
+                    ylab = paste0(TARGET_GENE, " (normalized expression)"),
+                    color = "BMI_WHO",
+                    palette = "npg",
+                    add = "jitter") +
+    stat_compare_means(method = "kruskal.test")
+  ggpar(p1, legend = "right")
+  rm(p1)
+  ggsave(file = paste0(PLOT_loc, "/",Today,".AERNASE.clin.",TARGET_GENE,".plaque.BMI_byWHO.pdf"), plot = last_plot())
+}
+```
+
+
+### Diabetes
+
+We want to create figures of target levels stratified by type 2 diabetes. 
+
+- Box and Whisker plot for target plasma or plaque levels by type 2 diabetes group (no, yes)
+
+Now we can draw some graphs of target plasma or plaque levels per sex and age group as median ± interquartile range.
+
+```{r per Diabetes per Sex}
+
+cat(paste0("Processing gene: \n"))
+for (TARGET_GENE in gene_list_qc) {
+
+  cat(paste0("- ", TARGET_GENE, "\n"))
+  compare_means(as.formula(paste0(TARGET_GENE, " ~ DiabetesStatus")), data = AERNASE.clin %>% filter(!is.na(DiabetesStatus)), method = "kruskal.test")
+  ggpubr::ggboxplot(AERNASE.clin %>% filter(!is.na(DiabetesStatus)),
+                    x = c("DiabetesStatus"),
+                    y = TARGET_GENE, 
+                    xlab = "Diabetes status",
+                    ylab = paste0(TARGET_GENE, " (normalized expression)"),
+                    # color = "Gender",
+                    # palette = c("#D5267B", "#1290D9"),
+                    color = "DiabetesStatus",
+                    palette = "npg",
+                    add = c("median_iqr", "jitter")) +
+    stat_compare_means(label = "p.format", method = "kruskal.test")
+  ggsave(file = paste0(PLOT_loc, "/",Today,".AERNASE.clin.",TARGET_GENE,".plaque.Diabetes.pdf"), plot = last_plot())
+  
+  compare_means(as.formula(paste0(TARGET_GENE, " ~ DiabetesStatus")), group.by = "Gender", data = AERNASE.clin %>% filter(!is.na(DiabetesStatus)), method = "kruskal.test")
+  ggpubr::ggboxplot(AERNASE.clin %>% filter(!is.na(DiabetesStatus)),
+                    x = c("DiabetesStatus"),
+                    y = TARGET_GENE, 
+                    xlab = "Diabetes status per gender",
+                    ylab = paste0(TARGET_GENE, " (normalized expression)"),
+                    color = "Gender",
+                    palette = c("#D5267B", "#1290D9"),
+                    add = c("median_iqr", "jitter")) +
+    stat_compare_means(aes(group = Gender), label = "p.format", method = "kruskal.test")
+  ggsave(file = paste0(PLOT_loc, "/",Today,".AERNASE.clin.",TARGET_GENE,".plaque.Diabetes_byGender.pdf"), plot = last_plot())
+}
+
+```
+
+
+### Smoking
+
+We want to create figures of target levels stratified by smoking. 
+
+- Box and Whisker plot for target plasma or plaque levels by smoking group (never, ex, current)
+
+Now we can draw some graphs of target plasma or plaque levels per sex and age group as median ± interquartile range.
+
+```{r per Smoking per Sex}
+
+cat(paste0("Processing gene: \n"))
+for (TARGET_GENE in gene_list_qc) {
+
+  cat(paste0("- ", TARGET_GENE, "\n"))
+  compare_means(as.formula(paste0(TARGET_GENE, " ~ SmokerStatus")),  data = AERNASE.clin %>% filter(!is.na(SmokerStatus)), method = "kruskal.test")
+  ggpubr::ggboxplot(AERNASE.clin %>% filter(!is.na(SmokerStatus)), 
+                    x = c("SmokerStatus"),
+                    y = TARGET_GENE,  
+                    xlab = "Smoker status",
+                    ylab = paste0(TARGET_GENE, " (normalized expression)"),
+                    # color = "Gender",
+                    # palette = c("#D5267B", "#1290D9"),
+                    color = "SmokerStatus",
+                    palette = "npg",
+                    add = c("median_iqr", "jitter")) +
+    stat_compare_means(label = "p.format", method = "kruskal.test")
+  ggsave(file = paste0(PLOT_loc, "/",Today,".AERNASE.clin.",TARGET_GENE,".plaque.Smoking.pdf"), plot = last_plot())
+  
+  compare_means(as.formula(paste0(TARGET_GENE, " ~ SmokerStatus")), group.by ="Gender", data = AERNASE.clin %>% filter(!is.na(SmokerStatus)), method = "kruskal.test")
+  ggpubr::ggboxplot(AERNASE.clin %>% filter(!is.na(SmokerStatus)), 
+                    x = c("SmokerStatus"),
+                    y = TARGET_GENE,  
+                    xlab = "Smoker status per gender",
+                    ylab = paste0(TARGET_GENE, " (normalized expression)"),
+                    color = "Gender",
+                    palette = c("#D5267B", "#1290D9"),
+                    add = c("median_iqr", "jitter")) +
+    stat_compare_means(aes(group = Gender), label = "p.format", method = "kruskal.test")
+  ggsave(file = paste0(PLOT_loc, "/",Today,".AERNASE.clin.",TARGET_GENE,".plaque.Smoking_byGender.pdf"), plot = last_plot())
+}
+```
+
+
+## Stenosis
+
+We want to create figures of target levels stratified by stenosis grade. 
+
+- Box and Whisker plot for target plasma or plaque levels by stenosis grade group (<70, 70-89, 90+)
+
+```{r Stenosis}
+library(dplyr)
+
+AERNASE.clin <- AERNASE.clin %>% mutate(StenoticGroup = factor(case_when(stenose == "0-49%" ~ "<70",
+                                                     stenose == "0-49%" ~ "<70",
+                                                     stenose == "50-70%" ~ "<70",
+                                                     stenose == "70-90%" ~ "70-89",
+                                                     stenose == "50-99%" ~ "90+",
+                                                     stenose == "70-99%" ~ "90+",
+                                                     stenose == "100% (Occlusion)" ~ "90+",
+                                                     stenose == "90-99%" ~ "90+")))
+
+table(AERNASE.clin$StenoticGroup, AERNASE.clin$Gender)
+table(AERNASE.clin$stenose, AERNASE.clin$StenoticGroup)
+
+```
+
+Now we can draw some graphs of target plasma or plaque levels per sex and age group as median ± interquartile range.
+
+```{r per Stenosis per Sex}
+
+cat(paste0("Processing gene: \n"))
+for (TARGET_GENE in gene_list_qc) {
+
+  cat(paste0("- ", TARGET_GENE, "\n"))
+  compare_means(as.formula(paste0(TARGET_GENE, " ~ StenoticGroup")),  data = AERNASE.clin %>% filter(!is.na(StenoticGroup)), method = "kruskal.test")
+  ggpubr::ggboxplot(AERNASE.clin %>% filter(!is.na(StenoticGroup)), 
+                    x = c("StenoticGroup"),
+                    y = TARGET_GENE,  
+                    xlab = "Stenotic grade",
+                    ylab = paste0(TARGET_GENE, " (normalized expression)"),
+                    # color = "Gender",
+                    # palette = c("#D5267B", "#1290D9"),
+                    color = "StenoticGroup",
+                    palette = "npg",
+                    add = "jitter") +
+    stat_compare_means(label = "p.format", method = "kruskal.test")
+  ggsave(file = paste0(PLOT_loc, "/",Today,".AERNASE.clin.",TARGET_GENE,".plaque.Stenosis.pdf"), plot = last_plot())
+  
+  compare_means(as.formula(paste0(TARGET_GENE, " ~ StenoticGroup")), group.by = "Gender", data = AERNASE.clin %>% filter(!is.na(StenoticGroup)), method = "kruskal.test")
+  ggpubr::ggboxplot(AERNASE.clin %>% filter(!is.na(StenoticGroup)), 
+                    x = c("StenoticGroup"),
+                    y = TARGET_GENE,  
+                    xlab = "Stenotic grade per gender",
+                    ylab = paste0(TARGET_GENE, " (normalized expression)"),
+                    color = "Gender",
+                    palette = c("#D5267B", "#1290D9"),
+                    add = "jitter") +
+    stat_compare_means(aes(group = Gender), label = "p.format", method = "kruskal.test")
+  ggsave(file = paste0(PLOT_loc, "/",Today,".AERNASE.clin.",TARGET_GENE,".plaque.Stenosis_byGender.pdf"), plot = last_plot())
+}
+```
+
+
+## Symptoms
+
+We want to create per-symptom figures. 
+
+```{r SymptomGroups}
+library(dplyr)
+
+table(AERNASE.clin$AgeGroup, AERNASE.clin$AsymptSympt2G)
+table(AERNASE.clin$Gender, AERNASE.clin$AsymptSympt2G)
+table(AERNASE.clin$AsymptSympt2G)
+```
+
+Now we can draw some graphs of target plasma or plaque levels per symptom group as median ± interquartile range.
+
+```{r per SymptomGroups}
+
+cat(paste0("Processing gene: \n"))
+for (TARGET_GENE in gene_list_qc) {
+
+  cat(paste0("- ", TARGET_GENE, "\n"))
+
+  my_comparisons <- list(c("Asymptomatic", "Symptomatic"))
+  
+  p1 <- ggpubr::ggboxplot(AERNASE.clin, 
+                    x = "AsymptSympt2G", y = TARGET_GENE, 
+                    title = paste0(TARGET_GENE, " (normalized expression) levels per symptom"),
+                    xlab = "Symptoms",
+                    ylab = paste0(TARGET_GENE, " (normalized expression)"),
+                    color = "AsymptSympt2G", 
+                    # palette = c(uithof_color[16], uithof_color[23]),
+                    palette = "npg",
+                    add = "dotplot", # Add dotplot
+                    add.params = list(binwidth = 0.1, dotsize = 0.3)
+            ) +
+    stat_compare_means(comparisons = my_comparisons, method = "wilcox.test")
+  ggpar(p1, legend = c("right"), legend.title = "Symptoms")
+  
+  ggsave(file = paste0(PLOT_loc, "/",Today,".AERNASE.clin.",TARGET_GENE,".plaque.AsymptSympt2G.pdf"), plot = last_plot())
+  
+  rm(p1)
+  
+  compare_means(as.formula(paste0(TARGET_GENE, " ~ AsymptSympt2G")), group.by = "Gender", data = AERNASE.clin, method = "kruskal.test")
+  p1 <- ggpubr::ggboxplot(AERNASE.clin, 
+                    x = "AsymptSympt2G", y = TARGET_GENE, 
+                    title = paste0(TARGET_GENE, " (normalized expression) levels per symptom by gender"),
+                    xlab = "Symptoms",
+                    ylab = paste0(TARGET_GENE, " (normalized expression)"),
+                    color = "Gender",
+                    palette = c("#D5267B", "#1290D9"),
+                    add = "dotplot", # Add dotplot
+                    add.params = list(binwidth = 0.1, dotsize = 0.3)
+            ) +
+    stat_compare_means(aes(group = Gender), label = "p.format",  method = "wilcox.test")
+  ggpar(p1, legend = c("right"), legend.title = "Symptoms")
+  
+  ggsave(file = paste0(PLOT_loc, "/",Today,".AERNASE.clin.",TARGET_GENE,".plaque.AsymptSympt2G.byGender.pdf"), plot = last_plot())
+  
+  rm(p1)
+  }
+```
+
+
+## Forest plots
+
+We would also like to visualize the multivariable analyses results.
+```{r load model data}
+library(ggplot2)
+library(openxlsx)
+model1_target <- read.xlsx(paste0(OUT_loc, "/", Today, ".AERNASE.clin.targets.Bin.Uni.",TRAIT_OF_INTEREST,".RANK.Symptoms.MODEL1.xlsx"))
+model2_target <- read.xlsx(paste0(OUT_loc, "/", Today, ".AERNASE.clin.targets.Bin.Multi.",TRAIT_OF_INTEREST,".RANK.Symptoms.MODEL2.xlsx"))
+
+model1_target$model <- "univariate"
+model2_target$model <- "multivariate"
+
+models_target <- rbind(model1_target, model2_target)
+models_target
+```
+
+
+### Per target gene
+
+We will make a forest plot per target. 
+
+```{r forestplots}
+
+cat(paste0("Processing genes:\n"))
+for (TARGET_GENE in gene_list_qc) {
+
+  cat(paste0("- ", TARGET_GENE, "\n"))
+  
+  # Create the data frame for the current gene
+  dat <- data.frame(
+    group = factor(
+      c("Age, sex-adjusted", "Age, sex, and adjusted for risk factors"),
+      levels = c("Age, sex, and adjusted for risk factors", "Age, sex-adjusted")
+    ),
+    cen = c(models_target$OR[models_target$Predictor == TARGET_GENE]),
+    low = c(models_target$low95CI[models_target$Predictor == TARGET_GENE]),
+    high = c(models_target$up95CI[models_target$Predictor == TARGET_GENE])
+  )
+  
+  # Create the forest plot
+  fp <- ggplot(data = dat, aes(x = group, y = cen, ymin = low, ymax = high)) +
+    geom_pointrange(linetype = 2, size = 1, colour = "#1290D9") +  # Single color for all points
+    geom_hline(yintercept = 1, lty = 2, color = "gray") +          # Reference line
+    coord_flip() +                                                 # Flip coordinates
+    scale_y_continuous(limits = c(0.8, 1.7)) +                     # Set y-axis limits
+    xlab("Model") + 
+    ylab("OR (95% CI) for symptomatic plaques") +
+    ggtitle(paste0("Plaque ", TARGET_GENE, " normalized expression\n(1 SD increment)")) +
+    theme_minimal()  # Minimal theme for clean plot
+  
+  # Display the plot in the console
+  print(fp)
+  
+  # Save the plot
+  ggsave(
+    file = paste0(PLOT_loc, "/", Today, ".AERNASE.clin.", TARGET_GENE, ".plaque.forest.pdf"),
+    plot = fp
+  )
+  
+  # Clean up
+  rm(fp)
+  rm(dat)
+}
+```
+
+
+### For all targets
+
+Making sure we get all the data for all the target genes in the forest plot. First, we create a new dataframe.
+
+```{r}
+# Create a dataframe for all target genes
+dat <- data.frame(
+  group = factor(rep(c("Age, sex-adjusted", "Age, sex, and adjusted for risk factors"), 
+                     each = length(gene_list)),
+                 levels = c("Age, sex, and adjusted for risk factors", "Age, sex-adjusted")),
+  target = rep(gene_list, times = 2),  # Add target names, repeated for both models
+  cen = c(
+    models_target$OR[models_target$Predictor %in% gene_list & grepl("univariate", models_target$model)],
+    models_target$OR[models_target$Predictor %in% gene_list & grepl("multivariate", models_target$model)]
+  ),
+  low = c(
+    models_target$low95CI[models_target$Predictor %in% gene_list & grepl("univariate", models_target$model)],
+    models_target$low95CI[models_target$Predictor %in% gene_list & grepl("multivariate", models_target$model)]
+  ),
+  high = c(
+    models_target$up95CI[models_target$Predictor %in% gene_list & grepl("univariate", models_target$model)],
+    models_target$up95CI[models_target$Predictor %in% gene_list & grepl("multivariate", models_target$model)]
+  )
+)
+```
+
+
+Now we are ready to create the forest plot for all target genes.
+
+```{r}
+fp <- ggplot(data = dat, aes(x = group, y = cen, ymin = low, ymax = high, colour = target)) +
+  geom_pointrange(position = position_dodge(width = 0.85), size = 0.45, linetype = "dotted") +  # Dotted lines for intervals
+  geom_hline(yintercept = 1, lty = 2, colour = uithof_color[26]) +                                    # Reference line, "#A2A3A4"
+  coord_flip() +                                                                            # Flip coordinates for better readability
+  xlab("Model") + ylab("OR (95% CI) for symptomatic plaques") +
+  ggtitle("Forest Plot for All Targets (1 SD increment)") +
+  scale_colour_manual(values = uithof_color) +                                             # Use uithof_color scheme
+  theme_minimal() +
+  theme(legend.title = element_text(size = 10), legend.text = element_text(size = 8), legend.position = "bottom")      # Customize legend
+
+# Add facet_wrap for separate subplots per target (optional)
+# fp <- fp + facet_wrap(~target, scales = "free_y")
+
+print(fp)
+
+ggsave(file = paste0(PLOT_loc, "/", Today, ".AERNASE.clin.AllTargets.plaque.forest.pdf"), plot = fp)
+
+# Clean up
+rm(fp)
+rm(dat)
+```
+
+
+
+## Target expression vs. cytokines plaque levels correlations
+
+We will plot the correlations of other cytokine plaque levels to the target plasma or plaque levels. These include:
+
+- IL2
+- IL4
+- IL5
+- IL6
+- IL8
+- IL9
+- IL10
+- IL12
+- IL13
+- IL21
+- INFG
+- TNFA
+- MIF
+- MCP1
+- MIP1a
+- RANTES
+- MIG
+- IP10
+- Eotaxin1
+- TARC
+- PARC
+- MDC
+- OPG
+- sICAM1
+- VEGFA
+- TGFB
+
+In addition we will look at three metalloproteinases which were measured using an activity assay. 
+
+- MMP2
+- MMP8
+- MMP9
+
+The proteins were measured using FACS and LUMINEX. Given the different platforms used (FACS vs. LUMINEX), we will inverse rank-normalize these variables as well to scale them to the same scale as the target plaque levels.
+
+
+We will set the measurements that yielded '0' to NA, as it is unlikely that any protein ever has exactly 0 copies. The '0' yielded during the experiment are due to the limits of the detection.
+
+### Prepare data
+
+```{r}
+# fix names of cytokine
+names(AEDB.CEA)[names(AEDB.CEA) == "VEFGA"] <- "VEGFA"
+
+# make sure that the names of targets are ammended with 'rna' to avoid confusion with the cytokines
+for (TARGET_GENE in 1:length(gene_list)){
+  names(AEDB.CEA)[names(AEDB.CEA) == gene_list[TARGET_GENE]] <- paste0(gene_list[TARGET_GENE], "rna")
+}
+
+# list all the cytokines
+cytokines <- c("IL2", "IL4", "IL5", "IL6", "IL8", "IL9", "IL10", "IL12", "IL13", "IL21", 
+               "INFG", "TNFA", "MIF", "MCP1", "MIP1a", "RANTES", "MIG", "IP10", "Eotaxin1", 
+               "TARC", "PARC", "MDC", "OPG", "sICAM1", "VEGFA", "TGFB")
+# list all the MMPs
+metalloproteinases <- c("MMP2", "MMP8", "MMP9")
+
+# update the database with the cytokines and metalloproteinases
+AERNASE.clin <- merge(AERNASE.clin, 
+                            subset(AEDB.CEA, select = c("STUDY_NUMBER", 
+                                                        cytokines,
+                                                        metalloproteinases)), 
+                            by.x = "study_number", by.y = "STUDY_NUMBER", sort = TRUE, all.x = TRUE)
+```
+
+
+```{r Target vs Cytokines INRT, paged.print=TRUE}
+
+proteins_of_interest <- c(cytokines, metalloproteinases)
+
+proteins_of_interest_rank = unlist(lapply(proteins_of_interest, paste0, "_rank"))
+
+# make variables numerics()
+AERNASE.clin <- AERNASE.clin %>%
+  mutate_each(funs(as.numeric), proteins_of_interest)
+  
+for(PROTEIN in 1:length(proteins_of_interest)){
+
+  var.temp.rank = proteins_of_interest_rank[PROTEIN]
+  var.temp = proteins_of_interest[PROTEIN]
+  
+  cat(paste0("\nSelecting ", var.temp, " and standardising: ", var.temp.rank,".\n"))
+  cat(paste0("* changing ", var.temp, " to numeric.\n"))
+
+  # AERNASE.clin <-  AERNASE.clin %>% mutate(AERNASE.clin[,var.temp] == replace(AERNASE.clin[,var.temp], AERNASE.clin[,var.temp]==0, NA))
+
+  AERNASE.clin[,var.temp][AERNASE.clin[,var.temp]==0.000000]=NA
+
+  cat(paste0("* standardising ", var.temp, 
+             " (mean: ",round(mean(!is.na(AERNASE.clin[,var.temp])), digits = 6),
+             ", n = ",sum(!is.na(AERNASE.clin[,var.temp])),").\n"))
+  
+  AERNASE.clin <- AERNASE.clin %>%
+      mutate_at(vars(var.temp), 
+        # list(Z = ~ (AERNASE.clin[,var.temp] - mean(AERNASE.clin[,var.temp], na.rm = TRUE))/sd(AERNASE.clin[,var.temp], na.rm = TRUE))
+        list(RANK = ~ qnorm((rank(AERNASE.clin[,var.temp], na.last = "keep") - 0.5) / sum(!is.na(AERNASE.clin[,var.temp]))))
+      )
+  # str(UCORBIOGSAqc$Z)
+  cat(paste0("* renaming RANK to ", var.temp.rank,".\n"))
+  AERNASE.clin[,var.temp.rank] <- NULL
+  names(AERNASE.clin)[names(AERNASE.clin) == "RANK"] <- var.temp.rank
+}
+
+rm(var.temp, var.temp.rank)
+
+```
+
+### Visualize transformations
+
+We will just visualize these transformations.
+
+```{r Target vs Cytokines Histograms}
+proteins_of_interest_rank_target <- c(gene_list_qc, proteins_of_interest_rank)
+
+proteins_of_interest_target <- c(gene_list_qc, proteins_of_interest)
+
+# Loop through proteins_of_interest_target
+for (PROTEIN_GENE in proteins_of_interest_target) {
+  cat(paste0("Plotting protein ", PROTEIN_GENE, " (normalized expression).\n"))
+  
+  # Generate histogram
+  p1 <- ggpubr::gghistogram(
+    AERNASE.clin, PROTEIN_GENE,
+    color = "white",
+    fill = "Gender",
+    palette = c("#1290D9", "#DB003F"),
+    add = "mean",
+    title = paste0(PROTEIN_GENE, " (normalized expression)"),
+    xlab = "",
+    ggtheme = theme_minimal()
+  )
+  
+  # Save the plot as PDF
+  ggsave(
+    filename = paste0(PLOT_loc, "/", Today, ".", PROTEIN_GENE, ".normalized_expression.pdf"),
+    plot = p1,
+    device = "pdf",
+    width = 8, height = 6
+  )
+}
+
+# Loop through proteins_of_interest_rank_target
+for (PROTEIN_GENE in proteins_of_interest_rank_target) {
+  cat(paste0("Plotting protein ", PROTEIN_GENE, " (inverse-normal transformation).\n"))
+  
+  # Generate histogram
+  p1 <- ggpubr::gghistogram(
+    AERNASE.clin, PROTEIN_GENE,
+    color = "white",
+    fill = "Gender",
+    palette = c("#1290D9", "#DB003F"),
+    add = "mean",
+    title = paste0(PROTEIN_GENE, " (inverse-normal transformation)"),
+    xlab = "inverse-normal transformation",
+    ggtheme = theme_minimal()
+  )
+  
+  # Save the plot as PDF
+  ggsave(
+    filename = paste0(PLOT_loc, "/", Today, ".", PROTEIN_GENE, ".inverse_normal_transformation.pdf"),
+    plot = p1,
+    device = "pdf",
+    width = 8, height = 6
+  )
+}
+  
+```
+
+### Correlations
+
+Here we calculate correlations between the targets and 28 other cytokines. We use Spearman's test, thus, correlations a given in _rho_. Please note the indications of measurement methods:
+
+- _L_: LUMINEX
+- _E_: ELISA
+- _a_: activity assay
+
+#### Correlation table
+
+Here we create a table of correlations between the target genes and the cytokines.
+
+```{r Target vs Cytokines correlations}
+# Installation of ggcorrplot()
+# --------------------------------
+if(!require(devtools)) 
+  install.packages.auto("devtools")
+devtools::install_github("kassambara/ggcorrplot")
+
+library(ggcorrplot)
+
+# Creating matrix - inverse-rank transformation
+# --------------------------------
+temp <- subset(AERNASE.clin, 
+                          select = c(proteins_of_interest_rank_target)
+                                    )
+
+# str(AEDB.CEA.temp)
+matrix.RANK <- as.matrix(temp)
+rm(temp)
+
+corr_biomarkers.rank <- round(cor(matrix.RANK, 
+                             use = "pairwise.complete.obs", #the correlation or covariance between each pair of variables is computed using all complete pairs of observations on those variables
+                             method = "spearman"), 3)
+# corr_biomarkers.rank
+
+# Dynamically create a list of the names of the proteins and the target genes
+
+# Protein descriptors for proteins_of_interest
+protein_descriptors <- list(
+  IL13 = "(L)", IL21 = "(L)", MIF = "(L)", MCP1 = "(L)", MIP1a = "(L)", 
+  RANTES = "(L)", MIG = "(L)", IP10 = "(L)", Eotaxin1 = "(L)", 
+  TARC = "(L)", PARC = "(L)", MDC = "(L)", OPG = "(L)", sICAM1 = "(L)", 
+  VEGFA = "(E)", TGFB = "(E)", MMP2 = "(a)", MMP8 = "(a)", MMP9 = "(a)"
+)
+
+# Function to add descriptors dynamically
+dynamic_protein_names <- function(proteins, descriptors) {
+  sapply(proteins, function(protein) {
+    if (protein %in% names(descriptors)) {
+      paste0(protein, " ", descriptors[[protein]])
+    } else {
+      protein
+    }
+  })
+}
+
+# Replace "CRTAC1 (RNA)" with each gene from gene_list_qc
+gene_list_with_rna <- paste0(gene_list_qc, " (RNA)")
+
+# Add descriptors to proteins of interest
+proteins_with_descriptors <- dynamic_protein_names(proteins_of_interest, protein_descriptors)
+
+# Combine both lists
+rename_proteins_of_interest_target <- c(gene_list_with_rna, proteins_with_descriptors)
+
+colnames(corr_biomarkers.rank) <- c(rename_proteins_of_interest_target)
+rownames(corr_biomarkers.rank) <- c(rename_proteins_of_interest_target)
+
+corr_biomarkers_p.rank <- ggcorrplot::cor_pmat(matrix.RANK, use = "pairwise.complete.obs", method = "spearman")
+
+# ++++++++++++++++++++++++++++
+# flattenCorrMatrix
+# ++++++++++++++++++++++++++++
+# cormat : matrix of the correlation coefficients
+# pmat : matrix of the correlation p-values
+flattenCorrMatrix <- function(cormat, pmat) {
+  ut <- upper.tri(cormat)
+  data.frame(
+    row = rownames(cormat)[row(cormat)[ut]],
+    column = rownames(cormat)[col(cormat)[ut]],
+    cor  =(cormat)[ut],
+    p = pmat[ut]
+    )
+}
+
+corr_biomarkers.rank.df <- flattenCorrMatrix(corr_biomarkers.rank, corr_biomarkers_p.rank)
+
+names(corr_biomarkers.rank.df)[names(corr_biomarkers.rank.df) == "row"] <- "Cytokine_X"
+names(corr_biomarkers.rank.df)[names(corr_biomarkers.rank.df) == "column"] <- "CytokineY"
+names(corr_biomarkers.rank.df)[names(corr_biomarkers.rank.df) == "cor"] <- "SpearmanRho"
+
+DT::datatable(corr_biomarkers.rank.df)
+
+fwrite(corr_biomarkers.rank.df, file = paste0(OUT_loc, "/",Today,".correlation_cytokines.txt"))
+
+```
+
+#### Heatmap
+
+We will create a heatmap of the correlations between the target genes and the cytokines.
+
+```{r Target vs Cytokines heatmap}
+# Add correlation coefficients
+# --------------------------------
+# argument lab = TRUE
+p1 <- ggcorrplot(
+  corr_biomarkers.rank, 
+  method = "square", 
+  type = "lower",
+  title = "Cross biomarker correlations", 
+  show.legend = TRUE, 
+  legend.title = bquote("Spearman's"~italic(rho)),
+  ggtheme = ggplot2::theme_minimal(), 
+  outline.color = "#FFFFFF",
+  show.diag = TRUE,
+  hc.order = FALSE, 
+  lab = FALSE,
+  digits = 3,
+  colors = c("#1290D9", "#FFFFFF", "#E55738")
+) +
+  theme(
+    axis.text.x = element_text(size = 5, angle = 45, hjust = 1), # Adjust x-axis text size and angle
+    axis.text.y = element_text(size = 5)                        # Adjust y-axis text size
+  )
+
+p1 
+# Save the plot
+ggsave(filename = paste0(PLOT_loc, "/", Today, ".correlation_cytokines.png"), plot = p1, width = 10, height = 8)
+ggsave(filename = paste0(PLOT_loc, "/", Today, ".correlation_cytokines.pdf"), plot = p1, width = 10, height = 8)
+
+# Clean up
+rm(p1)
+
+```
+
+
+#### Barplot
+
+While visually attractive we are not necessarily interested in the correlations between all the cytokines, rather of the targets with other cytokines only.
+
+```{r Target vs Cytokines barplot}
+cat(paste0("Processing gene: \n"))
+for (TARGET_GENE in gene_list_qc) {
+  cat(paste0("- ", TARGET_GENE, "\n"))
+  # Subset data for the current gene
+  temp <- subset(corr_biomarkers.rank.df, Cytokine_X == paste0(TARGET_GENE, " (RNA)"))
+  temp$p_log10 <- -log10(temp$p)
+  p_threshold <- -log10(0.05 / nrow(temp))
+  
+  # Create the bar plot
+  p1 <- ggpubr::ggbarplot(
+    temp, 
+    x = "CytokineY", 
+    y = "SpearmanRho",
+    fill = "CytokineY",               # Change fill color by cytokine
+    xlab = "Cytokine",
+    sort.val = "desc",                # Sort the value in descending order
+    sort.by.groups = FALSE,           # Don't sort inside each group
+    x.text.angle = 45,                # Rotate x-axis text
+    cex = 1.25                        # Set font size
+  )
+  
+  # Show plot
+  ggpar(p1,
+      legend = "bottom", 
+      legend.title = ""
+    ) +
+    theme(
+      axis.text.x = element_text(size = 10),  # Adjust font size for x-axis labels
+      axis.text.y = element_text(size = 10),  # Adjust font size for y-axis labels
+      axis.title.x = element_text(size = 12), # Adjust font size for x-axis title
+      axis.title.y = element_text(size = 12)  # Adjust font size for y-axis title
+    ) +
+    labs(
+      y = expression(paste("Spearman's"~italic(rho))),
+      title = paste0("Correlations for ", TARGET_GENE)
+    )
+  
+  # Save the plot
+  ggsave(file = paste0(PLOT_loc, "/", Today, ".", TARGET_GENE, "_vs_Cytokines.png"), plot = last_plot(), width = 10, height = 8)
+  ggsave(file = paste0(PLOT_loc, "/", Today, ".", TARGET_GENE, "_vs_Cytokines.pdf"), plot = last_plot(), width = 10, height = 8)
+  
+  # Clean up
+  rm(p1, temp)
+}
+
+
+```
+
+#### Dotchart
+
+We will create a dotchart of the correlations between the target genes and the cytokines.
+
+```{r}
+cat(paste0("Processing gene: \n"))
+for (TARGET_GENE in gene_list_qc) {
+  cat(paste0("- ", TARGET_GENE, "\n"))
+  # Subset data for the current gene
+  temp <- subset(corr_biomarkers.rank.df, Cytokine_X == paste0(TARGET_GENE, " (RNA)"))
+
+  temp$p_log10 <- -log10(temp$p)
+  p_threshold <- -log10(0.05/nrow(temp))
+  p_threshold
+  p1 <- ggdotchart(temp, x = "CytokineY", y = "p_log10",
+             color = "CytokineY", #fill = "CytokineY",                              # Color by groups
+             # palette = uithof_color, # Custom color palette
+             xlab = "Cytokine",
+             # ylab = expression(log[10]~"("~italic(p)~")-value"),
+             # ylim = c(0, 9),
+             sorting = "descending",                       # Sort value in descending order
+             add = "segments",                             # Add segments from y = 0 to dots
+             rotate = FALSE,                                # Rotate vertically
+             # group = "CytokineY",                                # Order by groups
+             dot.size = 8,                                 # Large dot size
+             label = round(temp$SpearmanRho, digits = 3),                        # Add mpg values as dot labels
+             font.label = list(color = "white", size = 4, 
+                               vjust = 0.5)                   
+             )
+  ggpar(p1, legend = "", 
+        legend.title = "") +
+    theme(axis.text.x = element_text(size = 14),
+          axis.text.y = element_text(size = 14),
+          axis.title.x = element_text(size = 18),
+          axis.title.y = element_text(size = 18)) +
+    labs(y = expression(log[10]~"("~italic(p)~")-value"))
+  
+  ggsave(file = paste0(PLOT_loc, "/",Today,".",TARGET_GENE,"_vs_Cytokines.dotchart.png"), plot = last_plot())
+  ggsave(file = paste0(PLOT_loc, "/",Today,".",TARGET_GENE,"_vs_Cytokines.dotchart.pdf"), plot = last_plot())
+  
+  # Clean up
+  rm(p1, temp)
+}
+
+```
+
+
+## Target expression vs. cytokines plaque levels
+
+### Model 1
+
+In this model we correct for _Age_, _Gender_, and _year of surgery_.
+
+Here we use the inverse-rank normalized data - visually this is more normally distributed.
+
+Analysis of plaque cytokines traits as a function of target plasma or plaque levels.
+
+```{r CrossSec: Cytokines - linear regression MODEL1 RANK, paged.print=TRUE}
+
+GLM.results <- data.frame(matrix(NA, ncol = 15, nrow = 0))
+cat("Running linear regression...\n")
+for (protein in 1:length(TRAITS.TARGET.RANK)) {
+  PROTEIN = TRAITS.TARGET.RANK[protein]
+  cat(paste0("\nAnalysis of ",PROTEIN,".\n"))
+  for (trait in 1:length(proteins_of_interest_rank)) {
+    TRAIT = proteins_of_interest_rank[trait]
+    cat(paste0("\n- processing ",TRAIT,"\n\n"))
+    currentDF <- as.data.frame(AERNASE.clin %>%
+      dplyr::select(., PROTEIN, TRAIT, COVARIATES_M1) %>%
+      filter(complete.cases(.))) %>%
+      filter_if(~is.numeric(.), all_vars(!is.infinite(.)))
+    # for debug
+    # print(DT::datatable(currentDF))
+    # print(nrow(currentDF))
+    # print(str(currentDF))
+    ### univariate
+    # fit <- lm(currentDF[,PROTEIN] ~ currentDF[,TRAIT] + Age + Gender + ORdate_year, data = currentDF)
+    fit <- lm(currentDF[,PROTEIN] ~ currentDF[,TRAIT] + Age + Gender + ORdate_epoch, data = currentDF)
+    model_step <- stepAIC(fit, direction = "both", trace = FALSE)
+    print(model_step)
+    print(summary(fit))
+
+    GLM.results.TEMP <- data.frame(matrix(NA, ncol = 15, nrow = 0))
+    GLM.results.TEMP[1,] = GLM.CON(fit, "AEDB.CEA", PROTEIN, TRAIT, verbose = TRUE)
+    GLM.results = rbind(GLM.results, GLM.results.TEMP)
+  }
+}
+cat("Edit the column names...\n")
+colnames(GLM.results) = c("Dataset", "Predictor", "Trait",
+                          "Beta", "s.e.m.",
+                          "OR", "low95CI", "up95CI",
+                          "T-value", "P-value", "r^2", "r^2_adj", "N", "Model_N", "Perc_Miss")
+
+cat("Correct the variable types...\n")
+GLM.results$Beta <- as.numeric(GLM.results$Beta)
+GLM.results$s.e.m. <- as.numeric(GLM.results$s.e.m.)
+GLM.results$OR <- as.numeric(GLM.results$OR)
+GLM.results$low95CI <- as.numeric(GLM.results$low95CI)
+GLM.results$up95CI <- as.numeric(GLM.results$up95CI)
+GLM.results$`T-value` <- as.numeric(GLM.results$`T-value`)
+GLM.results$`P-value` <- as.numeric(GLM.results$`P-value`)
+GLM.results$`r^2` <- as.numeric(GLM.results$`r^2`)
+GLM.results$`r^2_adj` <- as.numeric(GLM.results$`r^2_adj`)
+GLM.results$`N` <- as.numeric(GLM.results$`N`)
+GLM.results$`Model_N` <- as.numeric(GLM.results$`Model_N`)
+GLM.results$`Perc_Miss` <- as.numeric(GLM.results$`Perc_Miss`)
+
+```
+
+```{r CrossSec: Cytokines - linear regression MODEL1 RANK Writing}
+DT::datatable(GLM.results)
+
+# Save the data
+cat("Writing results to Excel-file...\n")
+### Univariate
+library(openxlsx)
+write.xlsx(GLM.results,
+           file = paste0(OUT_loc, "/",Today,".AERNASE.clin.Con.Uni.",TRAIT_OF_INTEREST,"_Plaque.Cytokines_Plaques.RANK.MODEL1.xlsx"),
+           rowNmes = FALSE, colNames = TRUE, sheetName = "Con.Uni.PlaquePheno")
+# Removing intermediates
+cat("Removing intermediate files...\n")
+rm(TRAIT, trait, currentDF, GLM.results, GLM.results.TEMP, fit, model_step)
+
+```
+
+
+
+### Model 2
+
+In this model we correct for _Age_, _Gender_, _year of surgery_, _Hypertension status_, _Diabetes status_, _current smoker status_, _lipid-lowering drugs (LLDs)_, _antiplatelet medication_, _eGFR (MDRD)_, _BMI_, _MedHx_CVD_ (combination of _CAD history_, _stroke history_, and _peripheral interventions_), and _stenosis_.
+
+Here we use the inverse-rank normalized data - visually this is more normally distributed.
+
+Analysis of plaque cytokines as a function of target plasma or plaque levels.
+
+```{r CrossSec: Cytokines - linear regression MODEL2 RANK, paged.print=TRUE}
+GLM.results <- data.frame(matrix(NA, ncol = 15, nrow = 0))
+cat("Running linear regression...\n")
+for (protein in 1:length(TRAITS.TARGET.RANK)) {
+  PROTEIN = TRAITS.TARGET.RANK[protein]
+  cat(paste0("\nAnalysis of ",PROTEIN,".\n"))
+  for (trait in 1:length(proteins_of_interest_rank)) {
+    TRAIT = proteins_of_interest_rank[trait]
+    cat(paste0("\n- processing ",TRAIT,"\n\n"))
+    currentDF <- as.data.frame(AERNASE.clin %>%
+      dplyr::select(., PROTEIN, TRAIT, COVARIATES_M2) %>%
+      filter(complete.cases(.))) %>%
+      filter_if(~is.numeric(.), all_vars(!is.infinite(.)))
+    # for debug
+    # print(DT::datatable(currentDF))
+    # print(nrow(currentDF))
+    # print(str(currentDF))
+    ### univariate
+    # fit <- lm(currentDF[,PROTEIN] ~ currentDF[,TRAIT] + Age + Gender + ORdate_year + 
+    #             Hypertension.composite + DiabetesStatus + SmokerStatus + 
+    #             Med.Statin.LLD + Med.all.antiplatelet + GFR_MDRD + BMI + 
+    #             MedHx_CVD + stenose, 
+    #           data = currentDF)
+    fit <- lm(currentDF[,PROTEIN] ~ currentDF[,TRAIT] + Age + Gender + ORdate_epoch + 
+                Hypertension.composite + DiabetesStatus + SmokerStatus + 
+                Med.Statin.LLD + Med.all.antiplatelet + GFR_MDRD + BMI + 
+                MedHx_CVD + stenose, 
+              data = currentDF)
+    model_step <- stepAIC(fit, direction = "both", trace = FALSE)
+    print(model_step)
+    print(summary(fit))
+    
+    GLM.results.TEMP <- data.frame(matrix(NA, ncol = 15, nrow = 0))
+    GLM.results.TEMP[1,] = GLM.CON(fit, "AEDB.CEA", PROTEIN, TRAIT, verbose = TRUE)
+    GLM.results = rbind(GLM.results, GLM.results.TEMP)
+  }
+}
+cat("Edit the column names...\n")
+colnames(GLM.results) = c("Dataset", "Predictor", "Trait",
+                          "Beta", "s.e.m.",
+                          "OR", "low95CI", "up95CI",
+                          "T-value", "P-value", "r^2", "r^2_adj", "N", "Model_N", "Perc_Miss")
+
+cat("Correct the variable types...\n")
+GLM.results$Beta <- as.numeric(GLM.results$Beta)
+GLM.results$s.e.m. <- as.numeric(GLM.results$s.e.m.)
+GLM.results$OR <- as.numeric(GLM.results$OR)
+GLM.results$low95CI <- as.numeric(GLM.results$low95CI)
+GLM.results$up95CI <- as.numeric(GLM.results$up95CI)
+GLM.results$`T-value` <- as.numeric(GLM.results$`T-value`)
+GLM.results$`P-value` <- as.numeric(GLM.results$`P-value`)
+GLM.results$`r^2` <- as.numeric(GLM.results$`r^2`)
+GLM.results$`r^2_adj` <- as.numeric(GLM.results$`r^2_adj`)
+GLM.results$`N` <- as.numeric(GLM.results$`N`)
+GLM.results$`Model_N` <- as.numeric(GLM.results$`Model_N`)
+GLM.results$`Perc_Miss` <- as.numeric(GLM.results$`Perc_Miss`)
+
+```
+
+```{r CrossSec: Cytokines - linear regression MODEL2 RANK, writing}
+DT::datatable(GLM.results)
+
+# Save the data
+cat("Writing results to Excel-file...\n")
+### Univariate
+library(openxlsx)
+write.xlsx(GLM.results,
+           file = paste0(OUT_loc, "/",Today,".AERNASE.clin.Con.Multi.",TRAIT_OF_INTEREST,"_Plaque.Cytokines_Plaques.RANK.MODEL2.xlsx"),
+           rowNames = FALSE, colNames = TRUE, sheetName = "Con.Multi.PlaquePheno")
+# Removing intermediates
+cat("Removing intermediate files...\n")
+rm(TRAIT, trait, currentDF, GLM.results, GLM.results.TEMP, fit, model_step)
+
+```
+
+## Target expression vs. vulnerability index
+
+We will also correlate the target levels to the `Plaque vulnerability index`. First, we'll visualize this, next we run model 1 and model 2. 
+
+### Visualize
+
+Here we plot the target levels to the `Plaque vulnerability index`. 
+
+```{r Fix ORyearGroup, message=FALSE, warning=FALSE}
+library(sjlabelled)
+
+AERNASE.clin$yeartemp <- as.numeric(year(AERNASE.clin$dateok))
+
+attach(AERNASE.clin)
+
+AERNASE.clin[,"ORyearGroup"] <- NA
+AERNASE.clin$ORyearGroup[yeartemp <= 2007] <- "< 2007"
+AERNASE.clin$ORyearGroup[yeartemp > 2007] <- "> 2007"
+detach(AERNASE.clin)
+
+table(AERNASE.clin$ORyearGroup, AERNASE.clin$ORdate_year)
+```
+
+
+```{r per PlaqueVulnerabilityIndex}
+
+cat(paste0("Processing gene: \n"))
+for (TARGET_GENE in gene_list_qc) {
+
+  cat(paste0("- ", TARGET_GENE, "\n"))
+
+  compare_means(as.formula(paste0(TARGET_GENE, " ~ Plaque_Vulnerability_Index")),  data = AERNASE.clin, method = "kruskal.test")
+  p1 <- ggpubr::ggboxplot(AERNASE.clin, 
+                    x = "Plaque_Vulnerability_Index",
+                    y = TARGET_GENE,  
+                    xlab = "Plaque vulnerability index",
+                    ylab = paste0(TARGET_GENE, " (normalized expression)\n"),
+                    color = "Plaque_Vulnerability_Index",
+                    palette = "npg",
+                    add = "jitter") +
+    stat_compare_means(label = "p.format",  method = "kruskal.test")
+  ggpar(p1, legend = "bottom", legend.title = "Plaque vulnerability index")
+  ggsave(filename = paste0(PLOT_loc, "/", Today, ".",TARGET_GENE,".plaque.PlaqueVulnerabilityIndex.pdf"), plot = last_plot())
+  
+  compare_means(as.formula(paste0(TARGET_GENE, " ~ Plaque_Vulnerability_Index")), group.by = "Gender", data = AERNASE.clin, method = "kruskal.test")
+  p2 <- ggpubr::ggboxplot(AERNASE.clin, 
+                    x = "Plaque_Vulnerability_Index",
+                    y = TARGET_GENE,  
+                    xlab = "Plaque vulnerability index by gender",
+                    ylab = paste0(TARGET_GENE, " (normalized expression)\n"),
+                    color = "Gender",
+                    palette = c("#D5267B", "#1290D9"),
+                    add = "jitter") +
+    stat_compare_means(aes(group = Gender), label = "p.format",  method = "kruskal.test")
+  ggpar(p2, legend = "bottom", legend.title = "Plaque vulnerability index")
+  ggsave(filename = paste0(PLOT_loc, "/", Today, ".",TARGET_GENE,".plaque.PlaqueVulnerabilityIndex.byGender.pdf"), plot = last_plot())
+  
+  
+  compare_means(as.formula(paste0(TARGET_GENE, " ~ Plaque_Vulnerability_Index")), data = AERNASE.clin, method = "kruskal.test")
+  p5 <- ggpubr::ggboxplot(AERNASE.clin, 
+                    x = "Plaque_Vulnerability_Index",
+                    y = TARGET_GENE,  
+                    xlab = "Plaque vulnerability index",
+                    ylab = paste0(TARGET_GENE, " (normalized expression)\n"),
+                    color = "Plaque_Vulnerability_Index",
+                    palette = "npg",
+                    facet.by = "ORyearGroup",
+                    add = "jitter") +
+    stat_compare_means(label = "p.format",  method = "kruskal.test")
+  ggpar(p5, legend = "bottom", legend.title = "Plaque vulnerability index")
+  ggsave(filename = paste0(PLOT_loc, "/", Today, ".",TARGET_GENE,".plaque.PlaqueVulnerabilityIndex_Facet_byYear.pdf"), plot = last_plot())
+  
+  compare_means(as.formula(paste0(TARGET_GENE, " ~ Plaque_Vulnerability_Index")), group.by = "Gender", data = AERNASE.clin, method = "kruskal.test")
+  p6 <- ggpubr::ggboxplot(AERNASE.clin, 
+                    x = "Plaque_Vulnerability_Index",
+                    y = TARGET_GENE,  
+                    xlab = "Plaque vulnerability index",
+                    ylab = paste0(TARGET_GENE, " (normalized expression)\n"),
+                    color = "Gender",
+                    palette = c("#D5267B", "#1290D9"),
+                    facet.by = "ORyearGroup",
+                    add = "jitter") +
+    stat_compare_means(aes(group = Gender), label = "p.format",  method = "kruskal.test")
+  ggpar(p6, legend = "bottom", legend.title = "Plaque vulnerability index")
+  ggsave(filename = paste0(PLOT_loc, "/", Today, ".",TARGET_GENE,".plaque.PlaqueVulnerabilityIndex_Facet_byYear.byGender.pdf"), plot = last_plot())
+}
+
+```
+
+
+### Model 1
+
+In this model we correct for _Age_, _Gender_, and _year of surgery_.
+
+Here we use the inverse-rank normalized data - visually this is more normally distributed.
+
+Analysis of the plaque vulnerability index as a function of target plasma or plaque levels.
+
+```{r CrossSec: Plaque_Vulnerability_Index - ordinal regression MODEL1 RANK, paged.print=TRUE}
+
+cat(paste0("Processing gene: \n"))
+for (TARGET_GENE in gene_list_qc) {
+
+  cat(paste0("- ", TARGET_GENE, "\n"))
+
+  GLM.results <- data.frame(matrix(NA, ncol = 16, nrow = 0))
+  for (protein in 1:length(TARGET_GENE)) {
+    PROTEIN = TARGET_GENE[protein]
+    cat(paste0("\nAnalysis of ",PROTEIN,".\n"))
+    TRAIT = "Plaque_Vulnerability_Index"
+      cat(paste0("\n- processing ",TRAIT,"\n\n"))
+      currentDF <- as.data.frame(AERNASE.clin %>%
+        dplyr::select(., PROTEIN, TRAIT, COVARIATES_M1) %>%
+        filter(complete.cases(.))) %>%
+        filter_if(~is.numeric(.), all_vars(!is.infinite(.))) %>%
+        droplevels(.)
+      
+      # fix numeric OR year
+      # currentDF$ORdate_year <- as.numeric(currentDF$ORdate_year)
+      
+      # for debug
+      # print(DT::datatable(currentDF))
+      # print(nrow(currentDF))
+      # print(str(currentDF))
+      # print(class(currentDF[,TRAIT]))
+      # table(currentDF$ORdate_year)
+      ### univariate
+       # + Hypertension.composite + DiabetesStatus + SmokerCurrent + 
+       #            Med.Statin.LLD + Med.all.antiplatelet + GFR_MDRD + BMI + 
+       #            CAD_history + Stroke_history + Peripheral.interv + stenose
+      # fit <- polr(currentDF[,TRAIT] ~ currentDF[,PROTEIN] + Age + Gender + ORdate_year, 
+      #           data  =  currentDF, 
+      #           Hess = TRUE)
+      fit <- polr(currentDF[,TRAIT] ~ currentDF[,PROTEIN] + Age + Gender + ORdate_epoch, 
+                data  =  currentDF, 
+                Hess = TRUE)
+      print(summary(fit))
+      
+      ## store table
+      (ctable <- coef(summary(fit)))
+  
+      ## calculate and store p values
+      p <- pnorm(abs(ctable[, "t value"]), lower.tail = FALSE) * 2
+      
+      ## combined table
+      print((ctable <- cbind(ctable, "p value" = p)))
+    }
+}
+```
+
+### Model 2
+
+In this model we correct for _Age_, _Gender_, _Hypertension status_, _Diabetes status_, _current smoker status_, _lipid-lowering drugs (LLDs)_, _antiplatelet medication_, _eGFR (MDRD)_, _BMI_, _MedHx_CVD_ (combination of _CAD history_, _stroke history_, and _peripheral interventions_), and _stenosis._.
+
+```{r CrossSec: Plaque_Vulnerability_Index - ordinal regression MODEL2 RANK, paged.print=TRUE}
+
+cat(paste0("Processing gene: \n"))
+for (TARGET_GENE in gene_list_qc) {
+
+  cat(paste0("- ", TARGET_GENE, "\n"))
+
+  for (protein in 1:length(TARGET_GENE)) {
+    PROTEIN = TARGET_GENE[protein]
+    cat(paste0("\nAnalysis of ",PROTEIN,".\n"))
+    TRAIT = "Plaque_Vulnerability_Index"
+      cat(paste0("\n- processing ",TRAIT,"\n\n"))
+      currentDF <- as.data.frame(AERNASE.clin %>%
+        dplyr::select(., PROTEIN, TRAIT, COVARIATES_M2) %>%
+        filter(complete.cases(.))) %>%
+        filter_if(~is.numeric(.), all_vars(!is.infinite(.))) %>%
+        droplevels(.)
+      
+      # fix numeric OR year
+      # currentDF$ORdate_year <- as.numeric(currentDF$ORdate_year)
+      
+      # for debug
+      # print(DT::datatable(currentDF))
+      # print(nrow(currentDF))
+      # print(str(currentDF))
+      # print(class(currentDF[,TRAIT]))
+      ### univariate
+  
+      # fit <- polr(as.factor(currentDF[,TRAIT]) ~ currentDF[,PROTEIN] + Age + Gender + ORdate_year + Hypertension.composite + DiabetesStatus + SmokerStatus + Med.Statin.LLD + Med.all.antiplatelet + GFR_MDRD + BMI + MedHx_CVD + stenose,
+      #           data  =  currentDF,
+      #           Hess = TRUE)
+      
+      fit <- polr(as.factor(currentDF[,TRAIT]) ~ currentDF[,PROTEIN] + Age + Gender + ORdate_epoch + Hypertension.composite + DiabetesStatus + SmokerStatus + Med.Statin.LLD + Med.all.antiplatelet + GFR_MDRD + BMI + MedHx_CVD + stenose,
+                data  =  currentDF,
+                Hess = TRUE)
+      
+      print(summary(fit))
+      
+      ## store table
+      (ctable <- coef(summary(fit)))
+  
+      ## calculate and store p values
+      p <- pnorm(abs(ctable[, "t value"]), lower.tail = FALSE) * 2
+      
+      ## combined table
+      print((ctable <- cbind(ctable, "p value" = p)))
+    }
+}
+```
+
+
+# Session information
+
+--------------------------------------------------------------------------------
+
+    Version:      v1.3.0
+    Last update:  2024-12-04
+    Written by:   Sander W. van der Laan (s.w.vanderlaan-2[at]umcutrecht.nl).
+    Description:  Script to analyse Targets from the Ather-Express Biobank Study.
+    Minimum requirements: R version 3.5.2 (2018-12-20) -- 'Eggshell Igloo', macOS Mojave (10.14.2).
+    
+    **MoSCoW To-Do List**
+    The things we Must, Should, Could, and Would have given the time we have.
+    _M_
+
+    _S_
+
+    _C_
+
+    _W_
+
+    **Changes log**
+    * v1.3.0 Made the script more general to plot across all the targets in the gene_list.
+    * v1.2.0 Dynamically create additional figures using for-loops.
+    * v1.1.1 Textual fixes.
+    * v1.1.0 Update to study database; update to bulk RNAseq data (deeper sequenced).
+    * v1.0.1 Fix to the start of this notebook.
+    * v1.0.0 Inital version.
+    
+
+--------------------------------------------------------------------------------
+
+```{r eval = TRUE}
+sessionInfo()
+```
+
+# Saving environment
+```{r Saving}
+save.image(paste0(PROJECT_loc, "/",Today,".",PROJECTNAME,".bulkRNAseq.additional_figures.RData"))
+```
+
++-----------------------------------------------------------------------------------------------------------------------------------------+
+| <sup>© 1979-2024 Sander W. van der Laan | s.w.vanderlaan[at]gmail[dot]com | [vanderlaanand.science](https://vanderlaanand.science).</sup> |
++-----------------------------------------------------------------------------------------------------------------------------------------+
