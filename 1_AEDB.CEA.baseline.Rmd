@@ -1244,11 +1244,47 @@ saveRDS(AEDB, file = paste0(OUT_loc, "/",Today,".",PROJECTNAME,".AEDB.raw.RDS"))
 ```
 
 
+## Medians
+
+Let's calculate the medians and inter-quartile ranges for a few variables. 
+
+```{r}
+# Load required packages
+library(dplyr)
+library(tidyr)
+library(knitr)
+
+# Define the specific variables of interest
+variables <- c("BMI", "GFR_MDRD", "TC_final", "LDL_final", "HDL_final", "TG_final")
+
+# Compute Median and IQR for selected variables
+summary_table <- AEDB.CEA %>%
+  summarise(across(all_of(variables), list(
+    Median = ~as.character(median(., na.rm = TRUE)),  # Convert to character
+    IQR = ~paste0(quantile(., 0.25, na.rm = TRUE), " - ", quantile(., 0.75, na.rm = TRUE))
+  ))) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = c("Variable", ".value"),
+    names_pattern = "^(.*)_(Median|IQR)$"  # Use regex to extract variable names correctly
+  )
+
+# Print table in console
+print(summary_table)
+
+# Optional: Format as a table
+kable(summary_table, caption = "Median and IQR Summary Table")
+
+
+```
+
+
+
 # Session information
 
 ------------------------------------------------------------------------------------------------------------------------
 
-    Version:      v1.3.0
+    Version:      v1.3.1
     Last update:  2025-03-05
     Written by:   Sander W. van der Laan (s.w.vanderlaan[at]gmail[dot]com).
     Description:  Script to get some Athero-Express Biobank Study baseline characteristics in the whole cohort and the CEA subset.
@@ -1265,6 +1301,7 @@ saveRDS(AEDB, file = paste0(OUT_loc, "/",Today,".",PROJECTNAME,".AEDB.raw.RDS"))
     _W_
 
     **Changes log**
+    * v1.3.1 Added calculation of medians with inter-quartile ranges.
     * v1.3.0 Major update to the AEDB.
     * v1.2.2 Project updates. Fixes to links and date.
     * v1.2.1 Small fix to the baseline table creation.
