@@ -1,6 +1,6 @@
 ---
 title: "Baseline characteristics"
-subtitle: Accompanying 'AE_TEMPLATE'
+subtitle: Accompanying 'RePlaq'
 author: '[Sander W. van der Laan, PhD](https://vanderlaanand.science) | s.w.vanderlaan[at]gmail[dot]com'
 date: '`r Sys.Date()`'
 output:
@@ -70,44 +70,6 @@ knitr::opts_chunk$set(fig.width = 12, fig.height = 8, fig.path = 'Figures/',
                       eval = TRUE)
 ggplot2::theme_set(ggplot2::theme_minimal())
 pander::panderOptions("table.split.table", Inf)
-```
-
-# Introduction
-
-## Project details
-
-*Collaborators*
-
-[First name] [Initials] [Last name], 
-[First name] [Initials] [Last name], 
-[First name] [Initials] [Last name]
-
-*Project ID* 
-AE_TEMPLATE
-
-
-## Background
-
-Here we map genes and variants at the `r TRAIT_OF_INTEREST` locus to the single-cell and bulk transcriptomics carotid plaque data, and other plaque-derived traits. These are given in:
-
-- `Variants.xlsx - sheet Variants`
-- `Genes.xlsx`
-
-
-```{r targets, message=FALSE, warning=FALSE}
-library(openxlsx)
-
-# update list
-gene_list <- read.xlsx(paste0(TARGET_loc, "/targets.xlsx"), sheet = "Genes")
-
-variant_list <- read.xlsx(paste0(TARGET_loc, "/targets.xlsx"), sheet = "Variants")
-# credset_list <- read.xlsx(paste0(TARGET_loc, "/Variants.xlsx"), sheet = "CredibleSet")
-
-DT::datatable(gene_list)
-
-DT::datatable(variant_list)
-# DT::datatable(credset_list)
-
 ```
 
 
@@ -1287,7 +1249,7 @@ saveRDS(AEDB, file = paste0(OUT_loc, "/",Today,".",PROJECTNAME,".AEDB.raw.RDS"))
 ------------------------------------------------------------------------------------------------------------------------
 
     Version:      v1.3.0
-    Last update:  2024-05-31
+    Last update:  2025-03-05
     Written by:   Sander W. van der Laan (s.w.vanderlaan[at]gmail[dot]com).
     Description:  Script to get some Athero-Express Biobank Study baseline characteristics in the whole cohort and the CEA subset.
     Minimum requirements: R version 3.4.3 (2017-06-30) -- 'Single Candle', Mac OS X El Capitan
@@ -1325,5 +1287,5 @@ save.image(paste0(PROJECT_loc, "/",Today,".",PROJECTNAME,".AEDB.CEA.baseline.RDa
 ```
 
 +-----------------------------------------------------------------------------------------------------------------------------------------+
-| <sup>© 1979-2024 Sander W. van der Laan | s.w.vanderlaan[at]gmail[dot]com | [vanderlaanand.science](https://vanderlaanand.science).</sup> |
+| <sup>© 1979-2025 Sander W. van der Laan | s.w.vanderlaan[at]gmail[dot]com | [vanderlaanand.science](https://vanderlaanand.science).</sup> |
 +-----------------------------------------------------------------------------------------------------------------------------------------+

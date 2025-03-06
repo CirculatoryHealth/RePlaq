@@ -36,17 +36,17 @@ AEMS450K1_loc = paste0(PLINK_loc, "/_AE_ORIGINALS/AEMS450K1")
 AEMS450K2_loc = paste0(PLINK_loc, "/_AE_ORIGINALS/AEMS450K2")
 
 ### Project
-PROJECT_loc = paste0(STORAGE_loc, "/git/CirculatoryHealth/AE_TEMPLATE")
+PROJECT_loc = paste0(STORAGE_loc, "/git/CirculatoryHealth/RePlaq")
 
-# use this if there is relevant information here.
-ifelse(!dir.exists(file.path(PROJECT_loc, "/targets")), 
-       dir.create(file.path(PROJECT_loc, "/targets")), 
-       FALSE)
-TARGET_loc = paste0(PROJECT_loc,"/targets")
+# # use this if there is relevant information here.
+# ifelse(!dir.exists(file.path(PROJECT_loc, "/targets")), 
+#        dir.create(file.path(PROJECT_loc, "/targets")), 
+#        FALSE)
+# TARGET_loc = paste0(PROJECT_loc,"/targets")
 
 ### SOME VARIABLES WE NEED DOWN THE LINE
-TRAIT_OF_INTEREST = "PCSK9" # Phenotype
-PROJECTNAME = "PCSK9"
+TRAIT_OF_INTEREST = "RePlaq" # Phenotype
+PROJECTNAME = "RePlaq"
 
 cat("\nCreate a new analysis directories.\n")
 
@@ -79,17 +79,17 @@ ifelse(!dir.exists(file.path(ANALYSIS_loc, "/BASELINE")),
        FALSE)
 BASELINE_loc = paste0(ANALYSIS_loc, "/BASELINE")
 
-cat("\n- for genetic analyses\n")
-ifelse(!dir.exists(file.path(ANALYSIS_loc, "/SNP")), 
-       dir.create(file.path(ANALYSIS_loc, "/SNP")), 
-       FALSE)
-SNP_loc = paste0(ANALYSIS_loc, "/SNP")
+# cat("\n- for genetic analyses\n")
+# ifelse(!dir.exists(file.path(ANALYSIS_loc, "/SNP")), 
+#        dir.create(file.path(ANALYSIS_loc, "/SNP")), 
+#        FALSE)
+# SNP_loc = paste0(ANALYSIS_loc, "/SNP")
 
-cat("\n- for Cox regression results\n")
-ifelse(!dir.exists(file.path(PLOT_loc, "/COX")), 
-       dir.create(file.path(PLOT_loc, "/COX")), 
-       FALSE)
-COX_loc = paste0(PLOT_loc, "/COX")
+# cat("\n- for Cox regression results\n")
+# ifelse(!dir.exists(file.path(PLOT_loc, "/COX")), 
+#        dir.create(file.path(PLOT_loc, "/COX")), 
+#        FALSE)
+# COX_loc = paste0(PLOT_loc, "/COX")
 
 
 setwd(paste0(PROJECT_loc))
